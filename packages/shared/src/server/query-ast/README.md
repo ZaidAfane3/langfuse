@@ -95,6 +95,15 @@ db.selectFrom("events_core")
 // … order by event_ts desc limit 1 by span_id, project_id
 ```
 
+**Write FINAL** (`useFinal` — ReplacingMergeTree reads; never on `events_core`):
+
+```ts
+db.selectFrom("scores as s")
+  .select("s.id")
+  .$call(useFinal(["scores"]));
+// … from scores as s final
+```
+
 **Select a metadata value** (`metadataValue` — lowers `metadata[key]` to a bound `indexOf` subscript):
 
 ```ts

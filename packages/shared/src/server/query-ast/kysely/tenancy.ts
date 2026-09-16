@@ -24,7 +24,7 @@ import {
 
 import type { ExecutionContext } from "../executionContext";
 import { QueryCompileError, UnscopedRelationError } from "./errors";
-import { type ClickHouseSelectQueryNode } from "./nodes";
+import { FinalTableNode, type ClickHouseSelectQueryNode } from "./nodes";
 import { TENANTED_TABLES } from "./schema";
 import { ClickHouseOperationNodeTransformer } from "./transformer";
 
@@ -184,6 +184,9 @@ function assertRelationAllowed(relation: Relation): void {
 }
 
 function describeRelation(node: OperationNode): Relation {
+  if (FinalTableNode.is(node)) {
+    return describeRelation(node.table);
+  }
   if (RawNode.is(node)) {
     return { kind: "raw" };
   }
