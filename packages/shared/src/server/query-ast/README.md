@@ -52,13 +52,16 @@ a required check once it has proven stable.
 
 - **Compile only through `compileClickhouseQuery(query, ctx)`.** It is the one
   supported path from a builder to `{ sql, params }`; the repository layer hands
-  that to `queryClickhouse`. `ctx` (an `ExecutionContext` carrying `projectId`)
-  is required — omitting it is a compile-time type error and an empty one throws.
+  that to `queryClickhouse`. `ctx` (an `ExecutionContext` carrying `projectId`
+  or `projectIds`) is required — omitting it is a compile-time type error and
+  an empty one throws.
 - **Never filter `project_id` yourself.** The compile step injects
-  `project_id = {projectId}` into every tenanted relation, so call sites pass
-  only `{ projectId }` (see `repositories/environments.ts`).
+  `project_id = {projectId}` (or `project_id IN {projectIds}`) into every
+  tenanted relation, so call sites pass only the scope (see
+  `repositories/environments.ts`).
 - **Dedup is declared per table and must be an existing production idiom.**
-  `events_core` is `none` (immutable at read time — no LIMIT BY, no FINAL).
+  `events_core` and `events_full` are `none` (immutable at read time — no
+  LIMIT BY, no FINAL).
   `limitBy` is the legacy `ORDER BY <version> DESC LIMIT 1 BY <key>` already
   used on traces / observations / scores. `$call(limitBy(...))` remains for
   explicit non-version LIMIT BY.

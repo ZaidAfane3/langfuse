@@ -42,20 +42,21 @@ is where tenancy is enforced:
 1. A missing/empty `ExecutionContext` throws (`QueryCompileError`) — `ctx` is a
    required parameter, so omitting it is also a compile-time type error.
 2. `TenancyInjectionPlugin` walks every FROM/JOIN and injects
-   `project_id = {projectId}` on each tenanted physical table, unless the tree
-   already carries a predicate that _proves_ that scope: the equality's value
-   must equal the context project, and — when more than one tenanted relation is
-   in scope — the column must be table-qualified. A qualified predicate covers a
-   relation only when the qualifier matches its alias (if aliased) or its table
-   name (if not) — so `scores AS traces` joined to `traces AS t` still scopes
-   both. It then identity-stamps the tree (`WeakSet`); a copied
+   `project_id = {projectId}` (or `project_id IN {projectIds}`) on each
+   tenanted physical table, unless the tree already carries a predicate that
+   _proves_ that scope: the predicate's value must equal the context project
+   (or the same `projectIds` list), and — when more than one tenanted relation
+   is in scope — the column must be table-qualified. A qualified predicate
+   covers a relation only when the qualifier matches its alias (if aliased) or
+   its table name (if not) — so `scores AS traces` joined to `traces AS t`
+   still scopes both. It then identity-stamps the tree (`WeakSet`); a copied
    `langfuseTenancy` property is not a valid stamp.
 3. `DedupLoweringPlugin` applies the table's declared read idiom
-   (`none` / `limitBy` / `final`). `events_core` is `none` — immutable at
-   read time, so the pass does not inject LIMIT BY or FINAL. `limitBy` is
-   the existing legacy `ORDER BY <version> DESC LIMIT 1 BY <key>`.
-   `final` is fail-closed until an emitter exists. The pass restamps the
-   rewritten root.
+   (`none` / `limitBy` / `final`). `events_core` and `events_full` are
+   `none` — immutable at read time, so the pass does not inject LIMIT BY or
+   FINAL. `limitBy` is the existing legacy
+   `ORDER BY <version> DESC LIMIT 1 BY <key>`. `final` is fail-closed until an
+   emitter exists. The pass restamps the rewritten root.
 4. `ClickHouseQueryCompiler` refuses to emit SQL unless that identity stamp is
    present, so `qb.compile()` without the plugin also fails. Value binds take
    their ClickHouse type from the compared column's registry entry when one is
@@ -65,8 +66,8 @@ is where tenancy is enforced:
 own keyword fragments (`asc`/`desc`) are not relations.
 
 So query bodies here never filter `project_id` by hand — it is redundant, and
-forgetting it is impossible. Call sites like `repositories/environments.ts` pass
-only `{ projectId }`.
+forgetting it is impossible. Call sites pass only `{ projectId }` or
+`{ projectIds }`.
 
 ## ClickHouse-only clauses use `$call(helper())`, not builder methods
 
