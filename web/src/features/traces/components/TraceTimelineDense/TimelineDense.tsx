@@ -59,10 +59,7 @@ import {
 } from "react";
 import { useTheme } from "next-themes";
 import { Scan, Minus, Plus, UnfoldVertical } from "lucide-react";
-import {
-  ItemTypeIcon,
-  type LangfuseItemType,
-} from "@/src/components/ItemBadge";
+import { ItemBadge, type LangfuseItemType } from "@/src/components/ItemBadge";
 import {
   tooltipPlacement,
   type TooltipPlacement,
@@ -2065,10 +2062,7 @@ function GutterContent({
           }}
         >
           <span className="shrink-0">
-            <ItemTypeIcon
-              type={node.type as LangfuseItemType}
-              className="size-4"
-            />
+            <ItemBadge type={node.type as LangfuseItemType} isSmall />
           </span>
           <span
             className="text-foreground truncate"
