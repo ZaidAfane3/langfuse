@@ -3,7 +3,7 @@ import type { MetricEmphasisContext } from "@/src/features/traces/fns/metricEmph
 
 export interface TraceSearchListItem {
   node: TreeNode;
-  /** Parent totals the row's metrics are compared against; undefined when no siblings */
+  /** Trace totals the row's metrics are compared against; undefined for rows that are the whole trace */
   emphasis?: MetricEmphasisContext;
   /** Observation ID for navigation (undefined for TRACE nodes) */
   observationId?: string;

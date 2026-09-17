@@ -204,10 +204,11 @@ describe("buildTraceUiData", () => {
       expect(result.searchItems[1].observationId).toBe("obs-1");
       expect(result.searchItems[2].observationId).toBe("obs-2");
 
-      // A chain has no siblings anywhere, so nothing gets a comparison total
-      result.searchItems.forEach((item) => {
-        expect(item.emphasis).toBeUndefined();
-      });
+      // Trace root and its lone top-level span are the whole trace; the
+      // nested observation compares against the trace duration.
+      expect(result.searchItems[0].emphasis).toBeUndefined();
+      expect(result.searchItems[1].emphasis).toBeUndefined();
+      expect(result.searchItems[2].emphasis?.traceTotalDurationMs).toBe(2000); // 2s * 1000ms
     });
 
     it("returns empty children for trace with no observations", () => {
@@ -780,7 +781,7 @@ describe("buildTraceUiData", () => {
       expect(result.roots[0].totalCost?.equals(new Decimal(0.8))).toBe(true);
     });
 
-    it("sibling searchItems compare against their parent's totalCost, only children against nothing", () => {
+    it("searchItems compare against the trace totalCost, except rows that are the whole trace", () => {
       const trace = createMockTrace();
       const observations: ObservationReturnType[] = [
         createMockObservation({
@@ -803,7 +804,7 @@ describe("buildTraceUiData", () => {
       const [traceItem, ...observationItems] = result.searchItems;
       expect(traceItem.emphasis).toBeUndefined();
       observationItems.forEach((item) => {
-        expect(item.emphasis?.parentTotalCost?.equals(traceTotalCost!)).toBe(
+        expect(item.emphasis?.traceTotalCost?.equals(traceTotalCost!)).toBe(
           true,
         );
       });

@@ -1,51 +1,43 @@
 import Decimal from "decimal.js";
 import { type TreeNode } from "@/src/features/traces/types/treeNode";
 
-/** A sibling at or above this share of its parent is the parent's majority. */
+/** A row at or above this share of the trace total is emphasised. */
 const METRIC_EMPHASIS_THRESHOLD = 0.5;
 
 export type MetricEmphasisContext = {
-  parentTotalCost?: Decimal;
-  parentTotalDurationMs?: number;
+  traceTotalCost?: Decimal;
+  traceTotalDurationMs?: number;
 };
 
 function nodeDurationMs(node: TreeNode): number | undefined {
-  if (node.endTime) return node.endTime.getTime() - node.startTime.getTime();
   if (node.latency != null) return node.latency * 1000;
+  if (node.endTime) return node.endTime.getTime() - node.startTime.getTime();
   return undefined;
 }
 
 /**
- * Undefined for the trace root and for an only child: both are always 100% of
- * their parent, so a share tells the reader nothing.
+ * Undefined for the trace root and for a lone top-level observation: both
+ * are the whole trace, so their share is always 100%.
  */
 export function resolveMetricEmphasisContext(
   node: TreeNode,
-  nodeMap: Map<string, TreeNode>,
   roots: TreeNode[],
 ): MetricEmphasisContext | undefined {
   if (node.type === "TRACE") return undefined;
-  const parent = node.parentObservationId
-    ? nodeMap.get(node.parentObservationId)
-    : roots.find((root) => root.type === "TRACE");
-  const siblings = parent ? parent.children : roots;
-  if (siblings.length < 2) return undefined;
-  if (parent) {
-    return {
-      parentTotalCost: parent.totalCost,
-      parentTotalDurationMs: nodeDurationMs(parent),
-    };
-  }
-  // Events-based traces with several roots: compare against all of them.
-  const durations = siblings
+  const traceRoot = roots.find((root) => root.type === "TRACE");
+  const topLevel = traceRoot ? traceRoot.children : roots;
+  if (topLevel.length === 1 && topLevel[0]?.id === node.id) return undefined;
+
+  const base = traceRoot ? [traceRoot] : roots;
+  const durations = base
     .map(nodeDurationMs)
     .filter((d): d is number => d != null);
   return {
-    parentTotalCost: siblings.reduce<Decimal | undefined>((acc, s) => {
-      if (!s.totalCost) return acc;
-      return acc ? acc.plus(s.totalCost) : s.totalCost;
+    traceTotalCost: base.reduce<Decimal | undefined>((acc, r) => {
+      if (!r.totalCost) return acc;
+      return acc ? acc.plus(r.totalCost) : r.totalCost;
     }, undefined),
-    parentTotalDurationMs:
+    traceTotalDurationMs:
       durations.length > 0 ? Math.max(...durations) : undefined,
   };
 }

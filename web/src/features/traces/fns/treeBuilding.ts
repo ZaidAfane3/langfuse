@@ -567,7 +567,7 @@ export function buildTraceUiData(
     const node = stack.pop()!;
     searchItems.push({
       node,
-      emphasis: resolveMetricEmphasisContext(node, nodeMap, roots),
+      emphasis: resolveMetricEmphasisContext(node, roots),
       observationId: node.type === "TRACE" ? undefined : node.id,
     });
     // Push children in reverse order to maintain depth-first left-to-right traversal

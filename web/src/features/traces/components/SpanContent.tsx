@@ -75,9 +75,9 @@ export function SpanContent({
   const shouldRenderDuration = showDuration && Boolean(durationMs);
   const emphasizeDuration = isEmphasizedShare(
     durationMs,
-    emphasis?.parentTotalDurationMs,
+    emphasis?.traceTotalDurationMs,
   );
-  const emphasizeCost = isEmphasizedShare(totalCost, emphasis?.parentTotalCost);
+  const emphasizeCost = isEmphasizedShare(totalCost, emphasis?.traceTotalCost);
 
   const isAggregate = node.children.length > 0 || node.type === "TRACE";
 
@@ -157,7 +157,7 @@ export function SpanContent({
                 className={cn(
                   "text-xs",
                   emphasizeDuration
-                    ? "text-foreground"
+                    ? "text-foreground font-bold"
                     : "text-foreground-tertiary",
                 )}
               >
@@ -187,7 +187,7 @@ export function SpanContent({
                 className={cn(
                   "text-xs",
                   emphasizeCost
-                    ? "text-foreground"
+                    ? "text-foreground font-bold"
                     : "text-foreground-tertiary",
                 )}
               >

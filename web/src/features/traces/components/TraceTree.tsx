@@ -87,7 +87,7 @@ const TraceTreeRow = memo(function TraceTreeRow({
 });
 
 export function TraceTree() {
-  const { roots, nodeMap, comments } = useTraceData();
+  const { roots, comments } = useTraceData();
   const { selectedNodeId, collapsedNodes, toggleCollapsed } = useSelection();
   const { handleHover } = useHandlePrefetchObservation();
   const handleSelectNode = useSelectTraceNode("tree");
@@ -114,11 +114,7 @@ export function TraceTree() {
           isCollapsed={isCollapsed}
           onToggleCollapse={onToggleCollapse}
           onSelect={onSelect}
-          emphasis={resolveMetricEmphasisContext(
-            node as TreeNode,
-            nodeMap,
-            roots,
-          )}
+          emphasis={resolveMetricEmphasisContext(node as TreeNode, roots)}
           commentCount={comments.get(node.id)}
           onHover={handleHover}
         />
