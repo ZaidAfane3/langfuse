@@ -24,7 +24,7 @@ import { ObservationLevelBadge } from "@/src/features/traces/components/Observat
 import { CommentCountIcon } from "@/src/features/comments/CommentCountIcon";
 import { cn } from "@/src/utils/tailwind";
 import { formatIntervalSeconds } from "@/src/utils/dates";
-import { usdFormatter, numberFormatter } from "@/src/utils/numbers";
+import { usdFormatter } from "@/src/utils/numbers";
 import { getSubtreeDurationOverflowMs } from "@/src/features/traces/fns/getSubtreeDurationOverflowMs";
 import {
   isEmphasizedShare,
@@ -80,7 +80,6 @@ export function SpanContent({
   const emphasizeCost = isEmphasizedShare(totalCost, emphasis?.parentTotalCost);
 
   const isAggregate = node.children.length > 0 || node.type === "TRACE";
-  const tokenTotal = node.totalUsage ?? 0;
 
   // Wall-clock duration of the whole subtree, surfaced as a second badge beside
   // the own-span badge when async descendants outlive the parent span (so the
@@ -94,8 +93,7 @@ export function SpanContent({
   const shouldRenderSubtreeDuration =
     shouldRenderDuration && subtreeWallClockOverflowMs != null;
 
-  const shouldRenderCostTokens =
-    showCostTokens && Boolean(tokenTotal || totalCost);
+  const shouldRenderCostTokens = showCostTokens && Boolean(totalCost);
 
   const shouldRenderAnyMetrics = shouldRenderDuration || shouldRenderCostTokens;
 
@@ -175,16 +173,6 @@ export function SpanContent({
               >
                 {"∑ "}
                 {formatIntervalSeconds(subtreeWallClockOverflowMs / 1000)}
-              </span>
-            ) : null}
-
-            {/* Total tokens */}
-            {shouldRenderCostTokens && tokenTotal ? (
-              <span
-                title="Total tokens"
-                className="text-foreground-tertiary text-xs"
-              >
-                {numberFormatter(tokenTotal, 0)}
               </span>
             ) : null}
 
