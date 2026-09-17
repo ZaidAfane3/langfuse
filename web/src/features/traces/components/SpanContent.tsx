@@ -24,7 +24,7 @@ import { ObservationLevelBadge } from "@/src/features/traces/components/Observat
 import { CommentCountIcon } from "@/src/features/comments/CommentCountIcon";
 import { cn } from "@/src/utils/tailwind";
 import { formatIntervalSeconds } from "@/src/utils/dates";
-import { usdFormatter } from "@/src/utils/numbers";
+import { usdFormatter, numberFormatter } from "@/src/utils/numbers";
 import { getSubtreeDurationOverflowMs } from "@/src/features/traces/fns/getSubtreeDurationOverflowMs";
 import {
   isEmphasizedShare,
@@ -93,7 +93,10 @@ export function SpanContent({
   const shouldRenderSubtreeDuration =
     shouldRenderDuration && subtreeWallClockOverflowMs != null;
 
-  const shouldRenderCostTokens = showCostTokens && Boolean(totalCost);
+  // Tokens stand in for cost only when there is no cost to show.
+  const tokenTotal = totalCost ? 0 : (node.totalUsage ?? 0);
+  const shouldRenderCostTokens =
+    showCostTokens && Boolean(totalCost || tokenTotal);
 
   const shouldRenderAnyMetrics = shouldRenderDuration || shouldRenderCostTokens;
 
@@ -173,6 +176,16 @@ export function SpanContent({
               >
                 {"∑ "}
                 {formatIntervalSeconds(subtreeWallClockOverflowMs / 1000)}
+              </span>
+            ) : null}
+
+            {/* Tokens, only without a cost */}
+            {shouldRenderCostTokens && tokenTotal ? (
+              <span
+                title="Total tokens"
+                className="text-foreground-tertiary text-xs"
+              >
+                {numberFormatter(tokenTotal, 0)} tokens
               </span>
             ) : null}
 
