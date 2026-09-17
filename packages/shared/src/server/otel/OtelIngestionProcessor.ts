@@ -1,4 +1,4 @@
-/* eslint-disable @repo/no-exotic-operators */
+/* eslint-disable @repo/no-exotic-operators, no-nested-ternary */
 import { randomUUID } from "crypto";
 
 import {

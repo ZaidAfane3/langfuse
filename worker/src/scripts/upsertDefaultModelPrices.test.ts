@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Decimal from "decimal.js";
 import { matchPricingTier } from "@langfuse/shared/src/server";
