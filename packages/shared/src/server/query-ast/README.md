@@ -14,6 +14,9 @@ sugar, semantic field metadata, `FilterState` embedding) will land under
   names) for snapshot comparison. No ClickHouse server needed.
 - `environments.golden.test.ts` — baselines `environments.getEnvironmentsForProject`
   (both write-mode branches × the timestamp bound).
+- Call-site builders and their goldens live next to the repository function
+  (e.g. `repositories/scores.ts` / `repositories/scores.golden.test.ts`).
+  This folder holds the compiler, catalog shapes, and the capture harness.
 - `kysely/` — compile-only ClickHouse dialect on Kysely 0.28. Real
   `OperationNode`s for ARRAY JOIN, LIMIT BY, and metadata `indexOf`
   subscripts; a mandatory tenancy injection pass keyed on `ExecutionContext`;
@@ -29,7 +32,7 @@ sugar, semantic field metadata, `FilterState` embedding) will land under
 Regenerate baselines with `-u` after an intentional SQL change:
 
 ```
-pnpm --filter @langfuse/shared run test src/server/query-ast -- -u
+pnpm --filter @langfuse/shared run test src/server/query-ast src/server/repositories/scores.golden.test.ts -- -u
 ```
 
 ## CI and the `clickhouse format` version
