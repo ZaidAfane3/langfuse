@@ -34,6 +34,8 @@ export type TreeNode = {
   // Pre-computed cost for this node + all descendants
   // Calculated bottom-up during tree construction for O(1) access
   totalCost?: Decimal;
+  // Total tokens of this node + all descendants, summed like totalCost.
+  subtreeTotalUsage?: number;
   // Duration in seconds. Set on TRACE wrapper nodes (v3) or root observation nodes (v4 events-based traces).
   latency?: number;
   // Wall-clock duration of this node's subtree, in milliseconds:

@@ -204,8 +204,10 @@ describe("buildTraceUiData", () => {
       expect(result.searchItems[1].observationId).toBe("obs-1");
       expect(result.searchItems[2].observationId).toBe("obs-2");
 
-      // All items should have parent duration for heatmap
-      expect(result.searchItems[0].parentTotalDuration).toBe(2000); // 2s * 1000ms
+      // A chain has no siblings anywhere, so nothing gets a comparison total
+      result.searchItems.forEach((item) => {
+        expect(item.emphasis).toBeUndefined();
+      });
     });
 
     it("returns empty children for trace with no observations", () => {
@@ -778,7 +780,7 @@ describe("buildTraceUiData", () => {
       expect(result.roots[0].totalCost?.equals(new Decimal(0.8))).toBe(true);
     });
 
-    it("propagates trace totalCost to all searchItems as parentTotalCost", () => {
+    it("sibling searchItems compare against their parent's totalCost, only children against nothing", () => {
       const trace = createMockTrace();
       const observations: ObservationReturnType[] = [
         createMockObservation({
@@ -795,14 +797,42 @@ describe("buildTraceUiData", () => {
 
       const result = buildTraceUiData(trace, observations);
 
-      // All searchItems should have the trace's total cost as parentTotalCost
       const traceTotalCost = result.roots[0].totalCost;
       expect(traceTotalCost).toBeDefined();
 
-      result.searchItems.forEach((item) => {
-        expect(item.parentTotalCost).toBeDefined();
-        expect(item.parentTotalCost?.equals(traceTotalCost!)).toBe(true);
+      const [traceItem, ...observationItems] = result.searchItems;
+      expect(traceItem.emphasis).toBeUndefined();
+      observationItems.forEach((item) => {
+        expect(item.emphasis?.parentTotalCost?.equals(traceTotalCost!)).toBe(
+          true,
+        );
       });
+
+      const single = buildTraceUiData(trace, [observations[0]]);
+      expect(single.searchItems[1].emphasis).toBeUndefined();
+    });
+
+    it("sums token usage bottom-up like cost", () => {
+      const trace = createMockTrace();
+      const observations: ObservationReturnType[] = [
+        createMockObservation({ id: "agent", parentObservationId: null }),
+        createMockObservation({
+          id: "gen-1",
+          parentObservationId: "agent",
+          totalUsage: 120,
+        }),
+        createMockObservation({
+          id: "gen-2",
+          parentObservationId: "agent",
+          totalUsage: 80,
+        }),
+      ];
+
+      const result = buildTraceUiData(trace, observations);
+
+      expect(result.nodeMap.get("gen-1")?.subtreeTotalUsage).toBe(120);
+      expect(result.nodeMap.get("agent")?.subtreeTotalUsage).toBe(200);
+      expect(result.roots[0].subtreeTotalUsage).toBe(200);
     });
 
     it("handles zero costs correctly in hierarchy (should not propagate)", () => {

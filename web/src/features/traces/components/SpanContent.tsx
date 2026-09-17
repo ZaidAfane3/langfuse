@@ -5,7 +5,7 @@
  * Responsibilities:
  * - Render span-specific data (name, metrics, badges, scores)
  * - Apply view preferences (show/hide features)
- * - Format and display metrics with color coding
+ * - Format metrics; a sibling that is most of its parent reads in foreground
  *
  * Does NOT know about:
  * - Tree structure (indents, lines, collapse buttons)
@@ -24,13 +24,15 @@ import { ObservationLevelBadge } from "@/src/features/traces/components/Observat
 import { CommentCountIcon } from "@/src/features/comments/CommentCountIcon";
 import { cn } from "@/src/utils/tailwind";
 import { formatIntervalSeconds } from "@/src/utils/dates";
-import { usdFormatter, formatTokenCounts } from "@/src/utils/numbers";
+import { usdFormatter, numberFormatter } from "@/src/utils/numbers";
 import { getSubtreeDurationOverflowMs } from "@/src/features/traces/fns/getSubtreeDurationOverflowMs";
-import { heatMapTextColor } from "@/src/features/traces/fns/heatMapTextColor";
+import {
+  isEmphasizedShare,
+  type MetricEmphasisContext,
+} from "@/src/features/traces/fns/metricEmphasis";
 import { useViewPreferences } from "@/src/features/traces/contexts/ViewPreferencesContext";
 import { useTraceData } from "@/src/features/traces/contexts/TraceDataContext";
 import { selectNodeScores } from "@/src/features/traces/fns/nodeScores";
-import type Decimal from "decimal.js";
 
 // How many distinct score groups to show inline on a tree/search row before
 // collapsing the rest into a "+N" pill. Keeps dense-score rows compact; the
@@ -39,8 +41,7 @@ const MAX_INLINE_SCORE_GROUPS = 3;
 
 interface SpanContentProps {
   node: TreeNode;
-  parentTotalCost?: Decimal;
-  parentTotalDuration?: number;
+  emphasis?: MetricEmphasisContext;
   commentCount?: number;
   onSelect?: () => void;
   onHover?: () => void;
@@ -49,21 +50,15 @@ interface SpanContentProps {
 
 export function SpanContent({
   node,
-  parentTotalCost,
-  parentTotalDuration,
+  emphasis,
   commentCount,
   onSelect,
   onHover,
   className,
 }: SpanContentProps) {
   const { mergedScores, traceLevelScoreOwnerIds } = useTraceData();
-  const {
-    showDuration,
-    showCostTokens,
-    showScores,
-    colorCodeMetrics,
-    showComments,
-  } = useViewPreferences();
+  const { showDuration, showCostTokens, showScores, showComments } =
+    useViewPreferences();
 
   // Use pre-computed cost from the TreeNode
   const totalCost = node.totalCost;
@@ -75,8 +70,17 @@ export function SpanContent({
         ? node.latency * 1000
         : undefined;
 
-  const shouldRenderDuration =
-    showDuration && Boolean(duration || node.latency);
+  const durationMs = duration || (node.latency ? node.latency * 1000 : 0);
+
+  const shouldRenderDuration = showDuration && Boolean(durationMs);
+  const emphasizeDuration = isEmphasizedShare(
+    durationMs,
+    emphasis?.parentTotalDurationMs,
+  );
+  const emphasizeCost = isEmphasizedShare(totalCost, emphasis?.parentTotalCost);
+
+  const isAggregate = node.children.length > 0 || node.type === "TRACE";
+  const tokenTotal = node.subtreeTotalUsage ?? node.totalUsage ?? 0;
 
   // Wall-clock duration of the whole subtree, surfaced as a second badge beside
   // the own-span badge when async descendants outlive the parent span (so the
@@ -91,10 +95,7 @@ export function SpanContent({
     shouldRenderDuration && subtreeWallClockOverflowMs != null;
 
   const shouldRenderCostTokens =
-    showCostTokens &&
-    Boolean(
-      node.inputUsage || node.outputUsage || node.totalUsage || totalCost,
-    );
+    showCostTokens && Boolean(tokenTotal || totalCost);
 
   const shouldRenderAnyMetrics = shouldRenderDuration || shouldRenderCostTokens;
 
@@ -148,7 +149,7 @@ export function SpanContent({
         {shouldRenderAnyMetrics && (
           <div className="flex flex-wrap gap-x-2">
             {/* Duration (own span) */}
-            {shouldRenderDuration && (duration || node.latency) ? (
+            {shouldRenderDuration ? (
               <span
                 title={
                   node.type === "TRACE"
@@ -156,19 +157,13 @@ export function SpanContent({
                     : "Own span duration"
                 }
                 className={cn(
-                  "text-foreground-tertiary text-xs",
-                  parentTotalDuration &&
-                    colorCodeMetrics &&
-                    heatMapTextColor({
-                      max: parentTotalDuration,
-                      value:
-                        duration || (node.latency ? node.latency * 1000 : 0),
-                    }),
+                  "text-xs",
+                  emphasizeDuration
+                    ? "text-foreground"
+                    : "text-foreground-tertiary",
                 )}
               >
-                {formatIntervalSeconds(
-                  (duration || (node.latency ? node.latency * 1000 : 0)) / 1000,
-                )}
+                {formatIntervalSeconds(durationMs / 1000)}
               </span>
             ) : null}
 
@@ -183,15 +178,18 @@ export function SpanContent({
               </span>
             ) : null}
 
-            {/* Token counts */}
-            {shouldRenderCostTokens &&
-            (node.inputUsage || node.outputUsage || node.totalUsage) ? (
-              <span className="text-foreground-tertiary text-xs">
-                {formatTokenCounts(
-                  node.inputUsage,
-                  node.outputUsage,
-                  node.totalUsage,
-                )}
+            {/* Total tokens */}
+            {shouldRenderCostTokens && tokenTotal ? (
+              <span
+                title={
+                  isAggregate
+                    ? "Total tokens of all child observations"
+                    : "Total tokens"
+                }
+                className="text-foreground-tertiary text-xs"
+              >
+                {isAggregate ? "∑ " : ""}
+                {numberFormatter(tokenTotal, 0)}
               </span>
             ) : null}
 
@@ -199,21 +197,18 @@ export function SpanContent({
             {shouldRenderCostTokens && totalCost ? (
               <span
                 title={
-                  node.children.length > 0 || node.type === "TRACE"
+                  isAggregate
                     ? "Aggregated cost of all child observations"
                     : undefined
                 }
                 className={cn(
-                  "text-foreground-tertiary text-xs",
-                  parentTotalCost &&
-                    colorCodeMetrics &&
-                    heatMapTextColor({
-                      max: parentTotalCost,
-                      value: totalCost,
-                    }),
+                  "text-xs",
+                  emphasizeCost
+                    ? "text-foreground"
+                    : "text-foreground-tertiary",
                 )}
               >
-                {node.children.length > 0 || node.type === "TRACE" ? "∑ " : ""}
+                {isAggregate ? "∑ " : ""}
                 {usdFormatter(totalCost.toNumber())}
               </span>
             ) : null}

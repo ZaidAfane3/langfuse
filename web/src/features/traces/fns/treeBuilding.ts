@@ -23,6 +23,7 @@ import type { TraceSearchListItem } from "@/src/features/traces/types/traceSearc
 import { type TreeNode } from "../types/treeNode";
 import { type ObservationReturnType } from "@/src/server/api/routers/traces";
 import Decimal from "decimal.js";
+import { resolveMetricEmphasisContext } from "@/src/features/traces/fns/metricEmphasis";
 import {
   type ObservationLevelType,
   ObservationLevel,
@@ -305,6 +306,14 @@ function buildTreeNodesBottomUp(
         ? nodeCost.plus(childrenTotalCost)
         : nodeCost || childrenTotalCost;
 
+    const ownUsage =
+      obs.totalUsage ?? (obs.inputUsage ?? 0) + (obs.outputUsage ?? 0);
+    const summedUsage = childTreeNodes.reduce(
+      (acc, child) => acc + (child.subtreeTotalUsage ?? 0),
+      ownUsage,
+    );
+    const subtreeTotalUsage = summedUsage > 0 ? summedUsage : undefined;
+
     // Aggregate subtree wall-clock bounds bottom-up: earliest start and latest
     // end across this node and every descendant. Children are already processed,
     // so their bounds are available on the ProcessingNode registry.
@@ -372,6 +381,7 @@ function buildTreeNodesBottomUp(
       parentObservationId: obs.parentObservationId,
       traceId: obs.traceId,
       totalCost,
+      subtreeTotalUsage,
       subtreeWallClockDurationMs,
       startTimeSinceTrace,
       startTimeSinceParentStart,
@@ -499,6 +509,11 @@ function buildTraceTree(
     undefined,
   );
 
+  const traceUsage = rootTreeNodes.reduce(
+    (acc, child) => acc + (child.subtreeTotalUsage ?? 0),
+    0,
+  );
+
   // Calculate trace root childrenDepth
   const traceChildrenDepth =
     rootTreeNodes.length > 0
@@ -515,6 +530,7 @@ function buildTraceTree(
     children: rootTreeNodes,
     latency: trace.latency,
     totalCost: traceTotalCost,
+    subtreeTotalUsage: traceUsage > 0 ? traceUsage : undefined,
     startTimeSinceTrace: 0,
     startTimeSinceParentStart: null,
     // depth: -1 for TRACE wrapper so its children (observations) start at depth 0
@@ -553,26 +569,6 @@ export function buildTraceUiData(
     return { roots, searchItems: [], nodeMap };
   }
 
-  // TODO: Extract aggregation logic to shared utility - duplicated in TraceTree.tsx and TraceTimeline/index.tsx
-  // Calculate aggregated totals across all roots for heatmap scaling
-  const rootTotalCost = roots.reduce<Decimal | undefined>((acc, r) => {
-    if (!r.totalCost) return acc;
-    return acc ? acc.plus(r.totalCost) : r.totalCost;
-  }, undefined);
-
-  const rootDuration =
-    roots.length > 0
-      ? Math.max(
-          ...roots.map((r) =>
-            r.latency
-              ? r.latency * 1000
-              : r.endTime
-                ? r.endTime.getTime() - r.startTime.getTime()
-                : 0,
-          ),
-        )
-      : undefined;
-
   // Build flat search items list (iterative to avoid stack overflow on deep trees)
   const searchItems: TraceSearchListItem[] = [];
 
@@ -586,8 +582,7 @@ export function buildTraceUiData(
     const node = stack.pop()!;
     searchItems.push({
       node,
-      parentTotalCost: rootTotalCost,
-      parentTotalDuration: rootDuration,
+      emphasis: resolveMetricEmphasisContext(node, nodeMap, roots),
       observationId: node.type === "TRACE" ? undefined : node.id,
     });
     // Push children in reverse order to maintain depth-first left-to-right traversal
