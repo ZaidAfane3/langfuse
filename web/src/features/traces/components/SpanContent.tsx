@@ -188,7 +188,6 @@ export function SpanContent({
                 }
                 className="text-foreground-tertiary text-xs"
               >
-                {isAggregate ? "∑ " : ""}
                 {numberFormatter(tokenTotal, 0)}
               </span>
             ) : null}
