@@ -812,29 +812,6 @@ describe("buildTraceUiData", () => {
       expect(single.searchItems[1].emphasis).toBeUndefined();
     });
 
-    it("sums token usage bottom-up like cost", () => {
-      const trace = createMockTrace();
-      const observations: ObservationReturnType[] = [
-        createMockObservation({ id: "agent", parentObservationId: null }),
-        createMockObservation({
-          id: "gen-1",
-          parentObservationId: "agent",
-          totalUsage: 120,
-        }),
-        createMockObservation({
-          id: "gen-2",
-          parentObservationId: "agent",
-          totalUsage: 80,
-        }),
-      ];
-
-      const result = buildTraceUiData(trace, observations);
-
-      expect(result.nodeMap.get("gen-1")?.subtreeTotalUsage).toBe(120);
-      expect(result.nodeMap.get("agent")?.subtreeTotalUsage).toBe(200);
-      expect(result.roots[0].subtreeTotalUsage).toBe(200);
-    });
-
     it("handles zero costs correctly in hierarchy (should not propagate)", () => {
       const trace = createMockTrace();
       const observations: ObservationReturnType[] = [

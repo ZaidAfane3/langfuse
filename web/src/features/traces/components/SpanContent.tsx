@@ -80,7 +80,7 @@ export function SpanContent({
   const emphasizeCost = isEmphasizedShare(totalCost, emphasis?.parentTotalCost);
 
   const isAggregate = node.children.length > 0 || node.type === "TRACE";
-  const tokenTotal = node.subtreeTotalUsage ?? node.totalUsage ?? 0;
+  const tokenTotal = node.totalUsage ?? 0;
 
   // Wall-clock duration of the whole subtree, surfaced as a second badge beside
   // the own-span badge when async descendants outlive the parent span (so the
@@ -181,11 +181,7 @@ export function SpanContent({
             {/* Total tokens */}
             {shouldRenderCostTokens && tokenTotal ? (
               <span
-                title={
-                  isAggregate
-                    ? "Total tokens of all child observations"
-                    : "Total tokens"
-                }
+                title="Total tokens"
                 className="text-foreground-tertiary text-xs"
               >
                 {numberFormatter(tokenTotal, 0)}
@@ -207,7 +203,6 @@ export function SpanContent({
                     : "text-foreground-tertiary",
                 )}
               >
-                {isAggregate ? "∑ " : ""}
                 {usdFormatter(totalCost.toNumber())}
               </span>
             ) : null}

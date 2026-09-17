@@ -306,14 +306,6 @@ function buildTreeNodesBottomUp(
         ? nodeCost.plus(childrenTotalCost)
         : nodeCost || childrenTotalCost;
 
-    const ownUsage =
-      obs.totalUsage ?? (obs.inputUsage ?? 0) + (obs.outputUsage ?? 0);
-    const summedUsage = childTreeNodes.reduce(
-      (acc, child) => acc + (child.subtreeTotalUsage ?? 0),
-      ownUsage,
-    );
-    const subtreeTotalUsage = summedUsage > 0 ? summedUsage : undefined;
-
     // Aggregate subtree wall-clock bounds bottom-up: earliest start and latest
     // end across this node and every descendant. Children are already processed,
     // so their bounds are available on the ProcessingNode registry.
@@ -381,7 +373,6 @@ function buildTreeNodesBottomUp(
       parentObservationId: obs.parentObservationId,
       traceId: obs.traceId,
       totalCost,
-      subtreeTotalUsage,
       subtreeWallClockDurationMs,
       startTimeSinceTrace,
       startTimeSinceParentStart,
@@ -509,11 +500,6 @@ function buildTraceTree(
     undefined,
   );
 
-  const traceUsage = rootTreeNodes.reduce(
-    (acc, child) => acc + (child.subtreeTotalUsage ?? 0),
-    0,
-  );
-
   // Calculate trace root childrenDepth
   const traceChildrenDepth =
     rootTreeNodes.length > 0
@@ -530,7 +516,6 @@ function buildTraceTree(
     children: rootTreeNodes,
     latency: trace.latency,
     totalCost: traceTotalCost,
-    subtreeTotalUsage: traceUsage > 0 ? traceUsage : undefined,
     startTimeSinceTrace: 0,
     startTimeSinceParentStart: null,
     // depth: -1 for TRACE wrapper so its children (observations) start at depth 0
